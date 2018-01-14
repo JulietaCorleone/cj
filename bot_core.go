@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	scraper "github.com/cardigann/go-cloudflare-scraper"
 	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"gopkg.in/mgo.v2"
 )
@@ -54,7 +56,12 @@ func Start(config Config) {
 	app.ConnectDiscord()
 
 	app.newPostAlert("3", func() {
-		app.discordClient.ChannelMessageSend(app.config.PrimaryChannel, "New Kalcor Post: http://forum.sa-mp.com/search.php?do=finduser&u=3")
+		title, message, err := app.getLatestPost("3")
+		if err != nil {
+			errors.Wrap(err, "failed to get latest kalcor post")
+		} else {
+			app.discordClient.ChannelMessageSend(app.config.PrimaryChannel, fmt.Sprint("**__NEW KALCOR POST__ IN TOPIC: %s**\nPost: %s", title, message))
+		}
 	})
 
 	done := make(chan bool)

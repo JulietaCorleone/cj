@@ -232,3 +232,48 @@ func (app *App) newPostAlert(id string, fn func()) {
 		}
 	}()
 }
+
+//	getLatestPost
+//	Params:
+//		forum id
+//	returns:
+//		string - full url
+//		string - Full post
+// 		error - error
+
+func (app App) getLatestPost(id string) (string, string, error) {
+	root, err := app.GetHTMLRoot(fmt.Sprintf("http://forum.sa-mp.com/search.php?do=finduser&u=%s", id))
+	if err != nil {
+		return "", "", errors.Wrap(err, "cannot get user's posts")
+	}
+
+	// Get the first post's title
+	path := xmlpath.MustCompile(`//em/a`)
+	title, ok := path.String(root)
+	if !ok {
+		return "", "", errors.New("cannot get the title of the first post")
+	}
+
+	// Get the first post from the list
+	path = xmlpath.MustCompile(`//em/a/@href`)
+	href, ok := path.String(root)
+	if !ok {
+		return "", "", errors.New("cannot get user posts")
+	}
+
+	root, err = app.GetHTMLRoot(fmt.Sprintf("http://forum.sa-mp.com/%s", href))
+	if err != nil {
+		return "", "", errors.Wrap(err, "cannot get user post url")
+	}
+
+	// Get the post
+	post := href[strings.Index(href, "#post")+5:] // This gets the global forum post id.
+	path = xmlpath.MustCompile(fmt.Sprintf(`//div[@id="post_message_%s"]`, post))
+	message, ok := path.String(root)
+	if !ok {
+		return "", "", errors.New("cannot get the post")
+	}
+	outputMessage := message
+
+	return title, outputMessage, nil
+}
